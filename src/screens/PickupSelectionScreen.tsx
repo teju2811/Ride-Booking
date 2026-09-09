@@ -5,13 +5,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { VEHICLES } from '../constants/data';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PickupSelection'>;
 
 const { height } = Dimensions.get('window');
 
 const PickupSelectionScreen = ({ route, navigation }: Props) => {
-  const { vehicle } = route.params;
+  const vehicle = route.params?.vehicle || VEHICLES[3];
 
   const pickupLocation = {
     id: '1',
@@ -24,7 +25,7 @@ const PickupSelectionScreen = ({ route, navigation }: Props) => {
   };
 
   const handleConfirmPickup = () => {
-    navigation.navigate('RideConfirmation', { vehicle, pickup: pickupLocation });
+    navigation.navigate('SetPrice', { vehicle, pickup: pickupLocation });
   };
 
   return (
@@ -79,22 +80,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background 
   },
   mapContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  map: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
   bottomSheetContainer: {
-    height: 320, // Fixed height for this simple layout
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 320,
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    marginTop: -20,
     paddingTop: 10,
     paddingHorizontal: SIZES.large,
     shadowColor: '#000',

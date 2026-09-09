@@ -23,7 +23,7 @@ const CancelRideScreen = ({ navigation }: Props) => {
   const handleCancelRide = () => {
     // Show success notification/toast (using Alert for simplicity)
     Alert.alert('Success', 'Your ride has been cancelled successfully.', [
-      { text: 'OK', onPress: () => navigation.navigate('RideSelection') }
+      { text: 'OK', onPress: () => navigation.navigate('PickupSelection', {}) }
     ]);
   };
 

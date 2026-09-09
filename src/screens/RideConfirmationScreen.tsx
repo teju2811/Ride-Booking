@@ -12,16 +12,31 @@ type Props = NativeStackScreenProps<RootStackParamList, 'RideConfirmation'>;
 const { height } = Dimensions.get('window');
 
 const RideConfirmationScreen = ({ route, navigation }: Props) => {
-  const { vehicle, pickup } = route.params;
+  const { vehicle, pickup, price } = route.params;
   const [boostAmount, setBoostAmount] = useState(0);
   const bottomSheetRef = useRef<BottomSheet>(null);
   
   // Driver assignment state: 0 = Searching, 1 = Found, 2 = Assigned
   const [assignmentState, setAssignmentState] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(-50)).current;
 
   useEffect(() => {
+    // Pop up animation for the status card
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateYAnim, {
+        toValue: 0,
+        friction: 5,
+        useNativeDriver: true,
+      })
+    ]).start();
+
     // 1. Progress bar animation for "Searching"
     Animated.timing(progressAnim, {
       toValue: 1,
@@ -46,7 +61,22 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
     // 3. Transition to "Driver Assigned"
     const timer2 = setTimeout(() => {
       setAssignmentState(2);
-      // Optional: fade out progress bar or do a success pop
+      
+      // Automatically disappear after 2.5 seconds of showing assigned
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: -50,
+            duration: 500,
+            useNativeDriver: true,
+          })
+        ]).start();
+      }, 2500);
     }, 4500);
 
     return () => {
@@ -55,15 +85,23 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
     };
   }, [progressAnim]);
 
-  const snapPoints = useMemo(() => ['50%', '80%'], []);
-  const totalFare = pickup.fare + boostAmount;
+  const snapPoints = useMemo(() => ['75%', '90%'], []);
+  const totalFare = price !== undefined ? price : pickup.fare + boostAmount;
+
+  const [isSheetVisible, setIsSheetVisible] = useState(false);
 
   const handleTripDetails = () => {
-    bottomSheetRef.current?.expand();
+    setIsSheetVisible(true);
+    // Optional: expand it after rendering if needed, though index={0} handles it
+  };
+
+  const handleCloseSheet = () => {
+    bottomSheetRef.current?.close();
+    setTimeout(() => setIsSheetVisible(false), 300);
   };
 
   const handleCancelRide = () => {
-    bottomSheetRef.current?.close();
+    handleCloseSheet();
     navigation.navigate('CancelRide', {
       rideDetails: {
         vehicle,
@@ -110,7 +148,7 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
       </View>
       
       {/* Top Status Notification Card */}
-      <View style={styles.topStatusCard}>
+      <Animated.View style={[styles.topStatusCard, { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] }]}>
         <View style={styles.statusHeaderRow}>
           <View style={styles.statusIconCircle}>
             <Ionicons 
@@ -149,7 +187,7 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
             />
           </View>
         )}
-      </View>
+      </Animated.View>
 
       <View style={styles.bottomSection}>
         <View style={styles.fareRow}>
@@ -168,13 +206,19 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
         />
       </View>
 
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1} // Closed by default
-        snapPoints={snapPoints}
-        enablePanDownToClose={true}
-        backgroundStyle={styles.bottomSheetBackground}
-      >
+      {isSheetVisible && (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={0} // Open to the first snap point (50%) when rendered
+          snapPoints={snapPoints}
+          enablePanDownToClose={true}
+          backgroundStyle={styles.bottomSheetBackground}
+          onChange={(index) => {
+            if (index === -1) {
+              setIsSheetVisible(false);
+            }
+          }}
+        >
         <BottomSheetView style={styles.sheetContent}>
           <Text style={styles.sheetTitle}>Trip Details</Text>
           
@@ -220,21 +264,22 @@ const RideConfirmationScreen = ({ route, navigation }: Props) => {
 
           <View style={styles.sheetButtons}>
             <TouchableOpacity 
-              style={[styles.sheetButton, styles.backButton]} 
-              onPress={() => bottomSheetRef.current?.close()}
-            >
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
               style={[styles.sheetButton, styles.cancelButton]} 
               onPress={handleCancelRide}
             >
               <Text style={styles.cancelButtonText}>Cancel Ride</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.sheetButton, styles.backButton]} 
+              onPress={handleCloseSheet}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
           </View>
         </BottomSheetView>
       </BottomSheet>
+      )}
     </SafeAreaView>
   );
 };
@@ -356,6 +401,7 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     padding: SIZES.large,
+    paddingBottom: SIZES.large + 30, // Add extra padding for the phone navigation panel
   },
   sheetTitle: {
     fontSize: 20,
@@ -441,12 +487,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   sheetButtons: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     gap: SIZES.small,
     marginTop: SIZES.medium,
   },
   sheetButton: {
-    width: '100%',
+    flex: 1,
     paddingVertical: 14,
     borderRadius: 25,
     alignItems: 'center',

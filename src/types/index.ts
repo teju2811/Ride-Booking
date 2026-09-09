@@ -32,8 +32,8 @@ export interface RideDetails {
 }
 
 export type RootStackParamList = {
-  RideSelection: undefined;
-  PickupSelection: { vehicle: Vehicle };
-  RideConfirmation: { vehicle: Vehicle; pickup: PickupLocation; boostAmount?: number };
+  PickupSelection: { vehicle?: Vehicle };
+  SetPrice: { vehicle: Vehicle; pickup: PickupLocation };
+  RideConfirmation: { vehicle: Vehicle; pickup: PickupLocation; price?: number };
   CancelRide: { rideDetails: RideDetails };
 };
